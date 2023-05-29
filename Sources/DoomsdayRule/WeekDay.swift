@@ -7,7 +7,7 @@ public enum WeekDay: Int {
     case Friday = 5
     case Saturday = 6
     
-    init(daysSinceSunday: Int) {
+    public init(daysSinceSunday: Int) {
         let r = daysSinceSunday % 7
         self = WeekDay(rawValue: r >= 0 ? r : r + 7)!
     }
