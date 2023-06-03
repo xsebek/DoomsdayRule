@@ -100,7 +100,7 @@ public struct FindYearAnchor {
     }
     
     public func pretty(withPrettyCentury century: Bool = false) -> String {
-        return (century ? centuryAnchor.pretty() + "\n" : "")
+        return (century ? centuryAnchor.pretty() + "\n\n" : "")
             + """
             Find the year anchor. Starting with year \(year):
              - note the century anchor A = \(centuryAnchor.result)

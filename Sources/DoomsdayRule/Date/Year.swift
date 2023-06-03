@@ -1,4 +1,4 @@
-public struct Year: Comparable {
+public struct Year: Equatable, Comparable {
     public let number: Int
     
     public init(number: Int) {

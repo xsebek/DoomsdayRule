@@ -6,53 +6,73 @@
 //
 
 import Foundation
+import ArgumentParser
+import Rainbow
 import DoomsdayRule
 
-public final class DoomsdayRuleCLI {
-    private let arguments: [String]
-
-    public init(arguments: [String] = CommandLine.arguments) {
-        self.arguments = arguments
-    }
+@main
+struct DoomsdayRuleCLI: ParsableCommand {
+    static var configuration = CommandConfiguration(
+        abstract: "Doomsday algorithm command line trainer.",
+        discussion: DoomsdayRuleCLI.replHelp)
     
-    public func run() throws {
-        let cal = Calendar(identifier: .iso8601)
-        let components = cal.dateComponents([.year, .month, .day], from: Foundation.Date())
-        let today = DoomsdayRule.Date(
-            day: components.day!,
-            month: Month(rawValue: components.month!)!,
-            year: Year(number: components.year!)
-        )
-        while (true) {
-            queryRandomDate(today)
+    @Option(name: .shortAndLong,
+            help: "The range of random dates [M|Y|C|A] - this month/year/century or any.",
+            transform: parseRange)
+    var range: DoomsdayRule.Date.Level?
+    
+    static func parseRange(_ text: String) throws -> DoomsdayRule.Date.Level {
+        switch (text) {
+        case "A": return .any
+        case "C": return .century
+        case "Y": return .year
+        case "M": return .month
+        default: throw DoomsdayCLIError.parseError("Could not parse '\(text)' range.")
         }
     }
     
-    public func stop() {
-        print("\n=== Doomsday CLI stopped ===\n")
-        exit(0)
+    func run() {
+        signal(SIGINT) {_ in
+            print()
+            Foundation.exit(0)
+        }
+
+        do {
+            try repl()
+        } catch {
+            print("Error occurred: \(error)")
+            Foundation.exit(1)
+        }
     }
     
-    public func help() {
-        print("""
-            Doomsday algorithm CLI trainer
-            - you will be prompted to calculate the day of the week for a given date
-            - input your guess as a number 0 to 6 (Sunday to Saturday) and hit Enter
-            - if you would like to know the answer press '?' and hit Enter
-              - for more detailed step by step answer use "??", "???" and "????"
-            - you can quit at any time using SIGKILL (Ctrl+C), EOF (Ctrl+D) or "q"/"quit"
-            - have fun!
-            """)
+    func repl() throws {
+        while (true) {
+            queryRandomDate()
+        }
     }
     
-    private func queryRandomDate(_ today: DoomsdayRule.Date) {
-        let randomDay = today.random(dayIn: .year)
+    static var replHelp: String = """
+        You will be prompted to calculate the day of the week for a given date.
+        
+        Input your guess as a number 0 to 6 (Sunday to Saturday) and hit Enter.
+        You can also use 1 to 7 (Monday to Sunday).
+        
+        If you would like to know the answer press '?' and hit Enter.
+        For more detailed step by step answer use "??", "???" and "????".
+        
+        You can quit at any time using SIGKILL (Ctrl+C), EOF (Ctrl+D) or "q"/"quit".
+        
+        To see this message again in REPL type 'h' and hit Enter. GL, HF!
+        """
+    
+    func queryRandomDate() {
+        let randomDay = today().random(dayIn: range ?? .year)
         let found = DoomsdayRule.FindWeekday(date: randomDay)
-        print("Which day of the week was: \(randomDay.pretty())")
+        print("Which day of the week", timeIs(of: randomDay) + ":", randomDay.pretty().blue)
         while (true) {
             print("> ", terminator: "")
             if let line = readLine() {
-                if (handleResponse(line, forAnswer: found)) {
+                if (handleResponse(line, answer: found, for: randomDay)) {
                     print("")
                     break
                 }
@@ -62,30 +82,30 @@ public final class DoomsdayRuleCLI {
         }
     }
     
-    private func handleResponse(_ line: String, forAnswer found: DoomsdayRule.FindWeekday) -> Bool {
+    func handleResponse(_ line: String, answer: DoomsdayRule.FindWeekday, for date: DoomsdayRule.Date) -> Bool {
         if (line.isEmpty) {
-            print("Please input a weekday number 0-6")
+            print("Please input a weekday number 0-6".dim)
             return false
         }
         if (["q", "quit"].contains(line)) {
             stop()
         }
         if (["h", "help"].contains(line)) {
-            help()
+            print(DoomsdayRuleCLI.replHelp)
             return false
         }
         if (line.allSatisfy{ $0 == "?" }) {
-            showAnswer(found, level: line.count)
+            showAnswer(answer, level: line.count, for: date)
             return true
         }
         if let number = Int(line),
            let weekday = WeekDay(rawValue: number == 7 ? 0 : number) // don't count modulo 7 for player
         {
-            if (weekday == found.result) {
-                print("Correct! The weekday is \(weekday)")
+            if (weekday == answer.result) {
+                print("Correct!".green, "The weekday", timeIs(of: date), "\(weekday)".green + ".")
                 return true
             } else {
-                print("\(weekday) is wrong. Try again.")
+                print("\(weekday)".red, "is wrong. Try again.")
             }
         } else {
             print("Could not parse input! Please input a weekday number 0-6")
@@ -93,10 +113,40 @@ public final class DoomsdayRuleCLI {
         return false
     }
     
-    private func showAnswer(_ answer: DoomsdayRule.FindWeekday, level: Int) {
+    func showAnswer(_ answer: DoomsdayRule.FindWeekday, level: Int, for date: DoomsdayRule.Date) {
         if (level > 1) {
-            print(answer.pretty(withYearAnchor: level > 2, withCenturyAnchor: level > 3))
+            print(answer.pretty(withYearAnchor: level > 2, withCenturyAnchor: level > 3).dim)
         }
-        print("The correct weekday was \(answer.result).")
+        print("The weekday", timeIs(of: date), "\(answer.result)".yellow + ".")
     }
+    
+    func stop() {
+        print("\n=== Doomsday CLI stopped ===\n")
+        Foundation.exit(0)
+    }
+    
+    func today() -> DoomsdayRule.Date {
+        let cal = Calendar(identifier: .iso8601)
+        let components = cal.dateComponents([.year, .month, .day], from: Foundation.Date())
+        return DoomsdayRule.Date(
+            day: components.day!,
+            month: Month(rawValue: components.month!)!,
+            year: Year(number: components.year!)
+        )
+    }
+    
+    func timeIs(of date: DoomsdayRule.Date) -> String {
+        let now = today()
+        if (date < now) {
+            return "was"
+        } else if (date == now) {
+            return "is"
+        } else {
+            return "will be"
+        }
+    }
+}
+
+enum DoomsdayCLIError: Error {
+    case parseError(String)
 }

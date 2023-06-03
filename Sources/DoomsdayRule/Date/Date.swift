@@ -1,8 +1,8 @@
 public struct Date {
-    public let day: Int
-    public let month: Month
     public let year: Year
-    
+    public let month: Month
+    public let day: Int
+
     public init(day: Int, month: Month, year: Year) {
         self.day = day
         self.month = month
@@ -16,14 +16,18 @@ public struct Date {
     // MARK: Random date
     
     public enum Level: Comparable {
-        case month, year, century
+        case month, year, century, any
     }
     
     public func random(dayIn level: Level) -> Date {
         var newDay: Int = self.day
         var newMonth: Month = self.month
         var newYear: Year = self.year
-        if (level >= .century) {
+        if (level == .any) {
+            let randomYear = (Date.firstGregorianYear.number...year.number+100).randomElement()!
+            newYear = Year(number: randomYear)
+        }
+        if (level == .century) {
             let thisCentury = (year.number / 100) * 100
             let randomYear = (thisCentury...thisCentury+99).randomElement()!
             newYear = Year(number: randomYear)
@@ -136,5 +140,17 @@ public struct Date {
             forward: true,
             monthDistances: total
         )
+    }
+}
+
+extension Date: Equatable, Comparable {
+    public static func < (lhs: Date, rhs: Date) -> Bool {
+        if (lhs.year != rhs.year) {
+            return lhs.year < rhs.year
+        }
+        if (lhs.month != rhs.month) {
+            return lhs.month < rhs.month
+        }
+        return lhs.day < rhs.day
     }
 }
