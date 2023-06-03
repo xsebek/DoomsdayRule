@@ -10,6 +10,9 @@ let package = Package(
         .library(
             name: "DoomsdayRule",
             targets: ["DoomsdayRule"]),
+        .executable(
+            name: "doomsday",
+            targets: ["DoomsdayRuleCLI"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -21,6 +24,10 @@ let package = Package(
         .target(
             name: "DoomsdayRule",
             dependencies: []),
+        .executableTarget(
+            name: "DoomsdayRuleCLI",
+            dependencies: ["DoomsdayRule"]
+        ),
         .testTarget(
             name: "DoomsdayRuleTests",
             dependencies: ["DoomsdayRule"]),

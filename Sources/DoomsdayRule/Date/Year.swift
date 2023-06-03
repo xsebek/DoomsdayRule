@@ -1,5 +1,9 @@
 public struct Year: Comparable {
     public let number: Int
+    
+    public init(number: Int) {
+        self.number = number
+    }
 
     public func isLeap() -> Bool {
         let div4 = number % 4 == 0
@@ -10,6 +14,12 @@ public struct Year: Comparable {
     
     public static func < (lhs: Year, rhs: Year) -> Bool {
         return lhs.number < rhs.number
+    }
+}
+
+extension Year: CustomStringConvertible {
+    public var description: String {
+        return "\(number)"
     }
 }
 

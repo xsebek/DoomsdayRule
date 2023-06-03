@@ -1,25 +1,59 @@
 public struct Date {
-    let day: Int
-    let month: Month
-    let year: Year
+    public let day: Int
+    public let month: Month
+    public let year: Year
+    
+    public init(day: Int, month: Month, year: Year) {
+        self.day = day
+        self.month = month
+        self.year = year
+    }
+    
+    public func pretty() -> String {
+        return "\(day) \(month) \(year)"
+    }
+    
+    // MARK: Random date
+    
+    public enum Level: Comparable {
+        case month, year, century
+    }
+    
+    public func random(dayIn level: Level) -> Date {
+        var newDay: Int = self.day
+        var newMonth: Month = self.month
+        var newYear: Year = self.year
+        if (level >= .century) {
+            let thisCentury = (year.number / 100) * 100
+            let randomYear = (thisCentury...thisCentury+99).randomElement()!
+            newYear = Year(number: randomYear)
+        }
+        if (level >= .year) {
+            let randomMonth = Month.allCases.randomElement()
+            newMonth = randomMonth!
+        }
+        newDay = (1...daysInMonth(newMonth, newYear)).randomElement()!
+        return Date(day: newDay, month: newMonth, year: newYear)
+    }
+    
     
     // MARK: Validity
     
-    static let firstGregorianYear = Year(number: 1583)
+    public static let firstGregorianYear = Year(number: 1583)
     
-    func isValid() -> Bool {
+    public func isValid() -> Bool {
         return year > Date.firstGregorianYear && day < daysInMonth(month, year)
     }
     
     // MARK: Distances
     
-    struct DateDistance {
-        let found: Date
-        let forward: Bool
-        let monthDistances: Dictionary<Month, Int>
-        let days: Int
+    public struct DateDistance {
+        public let found: Date
+        public let forward: Bool
+        public let monthDistances: Dictionary<Month, Int>
+        public let days: Int
         
-        init(found: Date, forward: Bool, monthDistances: Dictionary<Month, Int>) {
+        public init(found: Date, forward: Bool, monthDistances: Dictionary<Month, Int>) {
             self.found = found
             self.forward = forward
             self.monthDistances = monthDistances
@@ -27,7 +61,7 @@ public struct Date {
         }
     }
     
-    func toNearest(_ monthDays: Dictionary<Month, Int>) -> DateDistance {
+    public func toNearest(_ monthDays: Dictionary<Month, Int>) -> DateDistance {
         precondition(!monthDays.isEmpty, "It does not make sense to measure distance to nothing!")
         let down = downToNearest(monthDays)
         guard let up = upToNearest(monthDays) else {
