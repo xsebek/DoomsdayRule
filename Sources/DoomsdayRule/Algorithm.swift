@@ -26,15 +26,38 @@ public struct FindWeekday {
     
     public func pretty(withYearAnchor year: Bool = false, withCenturyAnchor century: Bool = false) -> String {
         return (year ? yearAnchor.pretty(withPrettyCentury: century) + "\n\n" : "")
-            + """
-            Find the weekday. Starting with date \(date.pretty()):
-             - note the year anchor A = \(yearAnchor.result)
-             - find the nearest doomsday D = \(distanceToDoomsday.found.pretty())
-             - the date is \(distanceToDoomsday.days) days from doomsday
-             - so the increment is I = \(distanceToDoomsday.days) ≡ \(increment.rawValue) ≡ \(increment)
-             - adding it to the year anchor we get (A + I) = \(yearAnchor.result.rawValue + increment.rawValue)\
-             ≡ \(result.rawValue) ≡ \(result)
-            """
+            + explanation.description
+    }
+    
+    public var explanation: PrettyExplanation {
+        let daysSum = {
+            if (distanceToDoomsday.monthDistances.count == 1) { return "" }
+            else { return distanceToDoomsday.monthDistances.map{"\($0.value)"}.joined(separator: " + ") + " = " }
+        }()
+        return PrettyExplanation(
+            title: "Find the weekday.",
+            intro: ["Starting with date", PrettyPart(date.pretty(), .Input)],
+            steps: [
+                step("note the year anchor",
+                     "A = \(yearAnchor.result)"
+                    ),
+                step("find the nearest doomsday",
+                     "D = \(distanceToDoomsday.found.pretty())"
+                    ),
+                [ "the date is",
+                  PrettyPart("\(daysSum)\(distanceToDoomsday.days)", .Math),
+                  "days from doomsday"
+                ],
+                step("so the increment is",
+                     "I = \(distanceToDoomsday.days) ≡ \(increment.rawValue) ≡ \(increment)"
+                    ),
+                answer(
+                    "adding it to the year anchor we get",
+                    "(A + I) = \(yearAnchor.result.rawValue + increment.rawValue) ≡ \(result.rawValue) ≡",
+                    "\(result)"
+                )
+            ]
+        )
     }
 }
 
@@ -66,13 +89,26 @@ public struct FindCenturyAnchor {
     }
     
     public func pretty() -> String {
-        return """
-            Find the century anchor. Starting with year \(year):
-             - take the century C = \(century)  (indexed from 0 as all things should be)
-             - which has index F = \(century) % 4 = \(fourCenturyIndex) in a four century cycle
-             - the resulting increment I = (F * -2) ≡ (F * 5) = \(fourCenturyIndex * 5) ≡ \(increment.rawValue) ≡ \(increment)
-             - add Tuesday and get the result (Tuesday + I) ≡ \(WeekDay.Tuesday.rawValue + increment.rawValue) ≡ \(result)
-            """
+        return explanation.description
+    }
+    
+    public var explanation: PrettyExplanation {
+        return PrettyExplanation(
+            title: "Find the century anchor.",
+            intro: ["Starting with year", PrettyPart("\(year)", .Input)],
+            steps: [
+                step("take the century digits", "C = \(century)"),
+                [ "which has index",
+                  PrettyPart("F = \(century) % 4 = \(fourCenturyIndex)", .Math),
+                  "in a four century cycle"
+                ],
+                step("the resulting increment is",
+                     "I = (F * -2) ≡ (F * 5) = \(fourCenturyIndex * 5) ≡ \(increment.rawValue) ≡ \(increment)"),
+                answer("add Tuesday and get the result",
+                  "(Tuesday + I) ≡ \(WeekDay.Tuesday.rawValue + increment.rawValue) ≡",
+                  "\(result)")
+            ]
+        )
     }
 }
 
@@ -100,14 +136,96 @@ public struct FindYearAnchor {
     }
     
     public func pretty(withPrettyCentury century: Bool = false) -> String {
-        return (century ? centuryAnchor.pretty() + "\n\n" : "")
-            + """
-            Find the year anchor. Starting with year \(year):
-             - note the century anchor A = \(centuryAnchor.result)
-             - take the last two digits Y = \(yearInCentury)
-             - so the increment is I = (Y + Y/4) = \(incrementRaw) ≡ \(increment.rawValue) ≡ \(increment)
-             - adding the anchor we get (A + I) = \(centuryAnchor.result.rawValue + increment.rawValue)\
-             ≡ \(result.rawValue) ≡ \(result)
-            """
+        return (century ? centuryAnchor.pretty() + "\n\n" : "") + explanation.description
     }
+    
+    public var explanation: PrettyExplanation {
+        return PrettyExplanation(
+            title: "Find the year anchor.",
+            intro: ["Starting with year", PrettyPart("\(year)", .Input)],
+            steps: [
+                step("note the century anchor", "A = \(centuryAnchor.result)"),
+                step("take the last two digits", "Y = \(yearInCentury)"),
+                step("so the increment is", "I = (Y + Y/4) = \(incrementRaw) ≡ \(increment.rawValue) ≡ \(increment)"),
+                answer("adding the anchor we get",
+                  "(A + I) = \(centuryAnchor.result.rawValue + increment.rawValue) ≡ \(result.rawValue) ≡",
+                  "\(result)")
+            ]
+        )
+    }
+}
+
+// MARK: - Pretty explanation
+
+public struct PrettyExplanation: CustomStringConvertible {
+    public let title: String
+    public let intro: PrettyText
+    public let steps: [PrettyText]
+    
+    public var description: String {
+        return "\(title) \(intro):\n" + steps.map{" - \($0.description)"}.joined(separator: "\n")
+    }
+}
+
+func step(_ note: String, _ equation: String) -> PrettyText {
+    return [
+        PrettyPart(note, .Text),
+        PrettyPart(equation, .Math)
+    ]
+}
+
+func answer(_ note: String, _ equation: String, _ result: String) -> PrettyText {
+    return [
+        PrettyPart(note, .Text),
+        PrettyPart(equation, .Math),
+        PrettyPart(result, .Answer)
+    ]
+}
+
+public struct PrettyText: CustomStringConvertible, ExpressibleByArrayLiteral {
+    public var parts: [PrettyPart]
+
+    public init(parts: [PrettyPart]) {
+        self.parts = parts
+    }
+    
+    public typealias ArrayLiteralElement = PrettyPart
+    public init(arrayLiteral elements: PrettyPart...) {
+        parts = elements
+    }
+    
+    public var description: String {
+        return parts.map{ $0.description }.joined(separator: " ")
+    }
+}
+
+public struct PrettyPart: ExpressibleByStringInterpolation, CustomStringConvertible {
+    public var text: String
+    public var tag: PrettyTextTag
+    
+    public init(_ text: String, _ tag: PrettyTextTag) {
+        self.text = text
+        self.tag = tag
+    }
+    
+    public typealias StringLiteralType = String
+    public init(stringLiteral: String) {
+        self.text = stringLiteral
+        self.tag = .Text
+    }
+    
+    public var description: String {
+        return text
+    }
+}
+
+public enum PrettyTextTag {
+    /// Normal text with no modifier.
+    case Text
+    /// Used for parts of original question, e.g. the year of the date.
+    case Input
+    /// Formatted equation.
+    case Math
+    /// Highlighted answer to the question.
+    case Answer
 }

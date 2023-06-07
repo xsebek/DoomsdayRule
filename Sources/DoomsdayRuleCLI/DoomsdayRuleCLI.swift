@@ -114,8 +114,16 @@ struct DoomsdayRuleCLI: ParsableCommand {
     }
     
     func showAnswer(_ answer: DoomsdayRule.FindWeekday, level: Int, for date: DoomsdayRule.Date) {
+        if (level > 3) {
+            printExplanation(answer.yearAnchor.centuryAnchor.explanation)
+            print()
+        }
+        if (level > 2) {
+            printExplanation(answer.yearAnchor.explanation)
+            print()
+        }
         if (level > 1) {
-            print(answer.pretty(withYearAnchor: level > 2, withCenturyAnchor: level > 3).dim)
+            printExplanation(answer.explanation)
         }
         print("The weekday", timeIs(of: date), "\(answer.result)".yellow + ".")
     }
@@ -149,4 +157,24 @@ struct DoomsdayRuleCLI: ParsableCommand {
 
 enum DoomsdayCLIError: Error {
     case parseError(String)
+}
+
+func printExplanation(_ explanation: PrettyExplanation) {
+    print((
+        "\(explanation.title) \(color(explanation.intro)):\n" +
+        explanation.steps.map{ " - \(color($0))" }.joined(separator: "\n")
+    ).dim)
+}
+
+func color(part: PrettyPart) -> String {
+    switch (part.tag) {
+    case .Text: return part.text
+    case .Math: return part.text.italic
+    case .Input: return part.text.blue
+    case .Answer: return part.text.yellow.italic
+    }
+}
+
+func color(_ text: PrettyText) -> String {
+    return text.parts.map(color(part:)).joined(separator: " ")
 }
